@@ -4,6 +4,50 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT_DIR"
 
+fail() {
+  printf 'Error: %s\n' "$1" >&2
+  exit 1
+}
+
+require_command() {
+  local command_name="$1"
+  local install_hint="$2"
+  if ! command -v "$command_name" >/dev/null 2>&1; then
+    fail "$command_name is required. $install_hint"
+  fi
+}
+
+version_at_least() {
+  local actual="$1"
+  local required="$2"
+  python3 - "$actual" "$required" <<'PY'
+import sys
+
+actual = tuple(int(part) for part in sys.argv[1].split(".")[:3])
+required = tuple(int(part) for part in sys.argv[2].split(".")[:3])
+if actual < required:
+    sys.exit(1)
+PY
+}
+
+preflight() {
+  require_command python3 "Install Python 3.11 or newer, then retry: bash up.sh"
+  require_command node "Install Node.js 18 or newer, then retry: bash up.sh"
+  require_command npm "Install npm with Node.js, then retry: bash up.sh"
+
+  local python_version
+  python_version="$(python3 -c 'import platform; print(platform.python_version())')"
+  if ! version_at_least "$python_version" "3.11.0"; then
+    fail "python3 must be >= 3.11; found $python_version. Install Python 3.11+ and ensure python3 points to it."
+  fi
+
+  local node_version
+  node_version="$(node -p 'process.versions.node')"
+  if ! version_at_least "$node_version" "18.0.0"; then
+    fail "node must be >= 18; found $node_version. Install Node.js 18+ and retry."
+  fi
+}
+
 BACKEND_PORT=8000
 FRONTEND_PORT=5173
 BACKEND_PID=""
@@ -23,6 +67,8 @@ cleanup() {
 }
 
 trap cleanup SIGINT SIGTERM EXIT
+
+preflight
 
 if [[ ! -d ".venv" ]]; then
   python3 -m venv .venv

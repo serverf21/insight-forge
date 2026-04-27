@@ -8,7 +8,7 @@ from app.api.routes import limiter, router
 
 app = FastAPI(title="Insight Forge API")
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler) # type: ignore
 app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(
     CORSMiddleware,
