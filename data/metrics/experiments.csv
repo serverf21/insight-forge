@@ -1,0 +1,6 @@
+timestamp,git_commit,alpha,model,preprocessing,ndcg10,recall10,mrr10
+2026-04-27T18:20:08.238053+00:00,8a4a41e55dc93d89c455371eb75c83c76dc699dc,1.000,all-MiniLM-L6-v2,strip-collapse-blank-lines-truncate-400-words,0.709850,0.625825,0.980000
+2026-04-27T18:20:17.441564+00:00,8a4a41e55dc93d89c455371eb75c83c76dc699dc,0.000,all-MiniLM-L6-v2,strip-collapse-blank-lines-truncate-400-words,0.805609,0.728302,1.000000
+2026-04-27T18:20:25.936785+00:00,8a4a41e55dc93d89c455371eb75c83c76dc699dc,0.300,all-MiniLM-L6-v2,strip-collapse-blank-lines-truncate-400-words,0.801966,0.728302,0.980000
+2026-04-27T18:20:34.047729+00:00,8a4a41e55dc93d89c455371eb75c83c76dc699dc,0.500,all-MiniLM-L6-v2,strip-collapse-blank-lines-truncate-400-words,0.790383,0.716302,0.980000
+2026-04-27T18:20:42.218585+00:00,8a4a41e55dc93d89c455371eb75c83c76dc699dc,0.700,all-MiniLM-L6-v2,strip-collapse-blank-lines-truncate-400-words,0.777708,0.708302,0.980000
