@@ -26,6 +26,7 @@ class QueryLog(Base):
     result_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     latency_ms: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     error: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    user_agent: Mapped[str] = mapped_column(Text, nullable=False, default="unknown", server_default="unknown")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

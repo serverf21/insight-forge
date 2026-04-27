@@ -7,7 +7,7 @@ from sqlalchemy.orm import sessionmaker
 from app.db.models import Base
 
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 DATABASE_URL = os.getenv("INSIGHT_FORGE_DATABASE_URL", "sqlite:///data/metrics/insight_forge.db")
 
 if DATABASE_URL.startswith("sqlite:///"):
@@ -31,6 +31,7 @@ QUERY_LOG_COLUMNS = {
     "latency_ms": "FLOAT NOT NULL DEFAULT 0.0",
     "error": "TEXT NOT NULL DEFAULT ''",
     "created_at": "DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP",
+    "user_agent": "TEXT NOT NULL DEFAULT 'unknown'",
 }
 
 EXPERIMENT_RUN_COLUMNS = {
@@ -44,13 +45,14 @@ EXPERIMENT_RUN_COLUMNS = {
 }
 
 
-def init_db() -> None:
-    Base.metadata.create_all(bind=engine)
-    inspector = inspect(engine)
+def init_db(db_engine=engine) -> None:
+    Base.metadata.create_all(bind=db_engine)
+    inspector = inspect(db_engine)
 
-    with engine.begin() as connection:
+    with db_engine.begin() as connection:
         _ensure_columns(connection, inspector, "query_logs", QUERY_LOG_COLUMNS)
         _ensure_columns(connection, inspector, "experiment_runs", EXPERIMENT_RUN_COLUMNS)
+        _repair_query_log_user_agent_default(connection)
 
         version = connection.execute(text("SELECT version FROM _schema_version WHERE id = 1")).scalar()
         if version is None:
@@ -64,3 +66,25 @@ def _ensure_columns(connection, inspector, table_name: str, expected_columns: di
     for column_name, ddl in expected_columns.items():
         if column_name not in existing:
             connection.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {ddl}"))
+
+
+def _repair_query_log_user_agent_default(connection) -> None:
+    columns = connection.execute(text("PRAGMA table_info(query_logs)")).mappings().all()
+    user_agent = next((column for column in columns if column["name"] == "user_agent"), None)
+    if user_agent is None:
+        return
+
+    if not user_agent["notnull"] or user_agent["dflt_value"] is not None:
+        return
+
+    connection.execute(text("ALTER TABLE query_logs RENAME TO query_logs_legacy"))
+    Base.metadata.tables["query_logs"].create(bind=connection)
+    legacy_columns = [column["name"] for column in columns if column["name"] != "user_agent"]
+    column_list = ", ".join(legacy_columns)
+    connection.execute(
+        text(
+            f"INSERT INTO query_logs ({column_list}, user_agent) "
+            f"SELECT {column_list}, 'unknown' FROM query_logs_legacy"
+        )
+    )
+    connection.execute(text("DROP TABLE query_logs_legacy"))
