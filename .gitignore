@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Node / Vite
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Generated data and indexes
+data/raw/*
+data/processed/*
+data/index/bm25/*
+data/index/vector/*
+data/eval/*
+data/metrics/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/index/bm25/.gitkeep
+!data/index/vector/.gitkeep
+!data/eval/.gitkeep
+!data/metrics/.gitkeep
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
