@@ -43,6 +43,23 @@ export interface LogsResponse {
   items: QueryLog[];
 }
 
+export interface ExperimentRun {
+  timestamp: string;
+  alpha: string;
+  model: string;
+  preprocessing?: string;
+  ndcg10: string;
+  recall10: string;
+  mrr10: string;
+}
+
+export interface LogFilters {
+  severity?: "error" | "info";
+  from_ts?: string;
+  to_ts?: string;
+  limit?: number;
+}
+
 export async function searchDocuments(payload: SearchRequest): Promise<SearchResponse> {
   const response = await fetch("/api/search", {
     method: "POST",
@@ -60,9 +77,21 @@ export async function getMetrics(): Promise<MetricsSnapshot> {
   return parsePrometheusMetrics(await response.text());
 }
 
-export async function getLogs(limit = 1000): Promise<LogsResponse> {
-  const response = await fetch(`/api/logs?limit=${limit}`);
+export async function getLogs(limitOrFilters: number | LogFilters = 1000): Promise<LogsResponse> {
+  const filters: LogFilters =
+    typeof limitOrFilters === "number" ? { limit: limitOrFilters } : limitOrFilters;
+  const params = new URLSearchParams();
+  params.set("limit", String(filters.limit ?? 1000));
+  if (filters.severity) params.set("severity", filters.severity);
+  if (filters.from_ts) params.set("from_ts", filters.from_ts);
+  if (filters.to_ts) params.set("to_ts", filters.to_ts);
+  const response = await fetch(`/api/logs?${params.toString()}`);
   return parseJsonResponse<LogsResponse>(response);
+}
+
+export async function getExperiments(): Promise<ExperimentRun[]> {
+  const response = await fetch("/api/experiments");
+  return parseJsonResponse<ExperimentRun[]>(response);
 }
 
 async function parseJsonResponse<T>(response: Response): Promise<T> {
