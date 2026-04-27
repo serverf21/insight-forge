@@ -51,9 +51,12 @@ for idx, row in enumerate(dataset):
 PY
 fi
 
-if [[ ! -f "data/index/bm25/bm25.json" || ! -f "data/index/vector/vector.meta.json" ]]; then
-  PYTHONPATH="$ROOT_DIR/backend" python -m app.ingest
-  PYTHONPATH="$ROOT_DIR/backend" python -m app.index
+if [[ ! -f "data/processed/docs.jsonl" ]]; then
+  PYTHONPATH="$ROOT_DIR/backend" python -m app.ingest --input data/raw --out data/processed
+fi
+
+if [[ ! -f "data/index/bm25/index.pkl" || ! -f "data/index/bm25/docmap.json" || ! -f "data/index/vector/index.faiss" || ! -f "data/index/vector/meta.json" || ! -f "data/index/vector/docmap.json" ]]; then
+  PYTHONPATH="$ROOT_DIR/backend" python -m app.index --input data/processed/docs.jsonl
 fi
 
 if [[ ! -d "frontend/node_modules" ]]; then
