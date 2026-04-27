@@ -69,6 +69,7 @@ Run focused tests:
 ```bash
 .venv/bin/python -m pytest backend/tests/test_ingest.py
 .venv/bin/python -m pytest backend/tests/test_search.py
+.venv/bin/python -m pytest backend/tests/test_hybrid.py
 ```
 
 ## Validations
@@ -117,6 +118,55 @@ PYTHONPATH="$PWD/backend" .venv/bin/python -m app.search.sanity_check \
 ```
 
 The output prints ranked titles, `doc_id`, score, and source for each index.
+
+## Hybrid Sanity Check
+
+After indexes are built, run a hybrid search assertion script:
+
+```bash
+PYTHONPATH="$PWD/backend" .venv/bin/python -m app.search.hybrid_sanity_check \
+  --query "Alan Turing computer science" \
+  --top-k 5 \
+  --alpha 0.5
+```
+
+This verifies:
+
+- results are sorted descending by `hybrid_score`
+- `bm25_score`, `vector_score`, and `hybrid_score` are finite, with no `NaN` or `inf`
+- `alpha=1.0` mirrors the pure BM25 ordering
+- `alpha=0.0` mirrors the pure vector ordering
+
+For a quick REPL-style check without the helper module:
+
+```bash
+PYTHONPATH="$PWD/backend" .venv/bin/python - <<'PY'
+import math
+from app.search.hybrid import HybridSearcher
+
+query = "Alan Turing computer science"
+searcher = HybridSearcher()
+results = searcher.search(query, top_k=5, alpha=0.5)
+scores = [result.hybrid_score for result in results]
+
+assert scores == sorted(scores, reverse=True)
+assert all(
+    math.isfinite(value)
+    for result in results
+    for value in (result.bm25_score, result.vector_score, result.hybrid_score)
+)
+assert [r.doc_id for r in searcher.search(query, top_k=5, alpha=1.0)] == [
+    doc_id for doc_id, _ in searcher.bm25_index.query(query, 15)
+][:5]
+assert [r.doc_id for r in searcher.search(query, top_k=5, alpha=0.0)] == [
+    doc_id for doc_id, _ in searcher.vector_index.query(query, 15)
+][:5]
+
+print("hybrid sanity ok")
+for result in results:
+    print(result.doc_id, result.hybrid_score, result.title)
+PY
+```
 
 ## Run Services Separately
 
