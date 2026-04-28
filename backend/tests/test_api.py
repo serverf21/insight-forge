@@ -84,3 +84,39 @@ def test_metrics_prometheus_format(tmp_path):
     assert "search_zero_results_total " in body
     assert "search_latency_p50_ms " in body
     assert "search_latency_p95_ms " in body
+
+
+def test_feedback_records_row(tmp_path):
+    client = make_client(tmp_path)
+
+    response = client.post(
+        "/feedback",
+        json={"request_id": "req-1", "doc_id": "doc-1", "relevant": True},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "recorded"
+    assert isinstance(body["feedback_id"], int)
+
+
+def test_feedback_rejects_empty_request_id(tmp_path):
+    client = make_client(tmp_path)
+
+    response = client.post(
+        "/feedback",
+        json={"request_id": "", "doc_id": "doc-1", "relevant": True},
+    )
+
+    assert response.status_code == 422
+
+
+def test_feedback_rejects_empty_doc_id(tmp_path):
+    client = make_client(tmp_path)
+
+    response = client.post(
+        "/feedback",
+        json={"request_id": "req-1", "doc_id": "", "relevant": True},
+    )
+
+    assert response.status_code == 422

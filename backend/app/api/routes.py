@@ -13,7 +13,7 @@ from slowapi.util import get_remote_address
 from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 
-from app.db.models import QueryLog
+from app.db.models import QueryLog, RelevanceFeedback
 from app.db.session import SessionLocal, init_db
 from app.search.hybrid import HybridSearcher, SearchResult
 
@@ -33,6 +33,17 @@ class SearchResponse(BaseModel):
     results: list[SearchResult]
     total: int
     latency_ms: float
+
+
+class FeedbackRequest(BaseModel):
+    request_id: str = Field(..., min_length=1, max_length=64)
+    doc_id: str = Field(..., min_length=1, max_length=64)
+    relevant: bool
+
+
+class FeedbackResponse(BaseModel):
+    status: str
+    feedback_id: int
 
 
 def get_db(request: Request):
@@ -101,6 +112,19 @@ def search(
             )
         )
         db.commit()
+
+
+@router.post("/feedback", response_model=FeedbackResponse)
+def feedback(payload: FeedbackRequest, db: Session = Depends(get_db)) -> FeedbackResponse:
+    row = RelevanceFeedback(
+        request_id=payload.request_id,
+        doc_id=payload.doc_id,
+        relevant=payload.relevant,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return FeedbackResponse(status="recorded", feedback_id=row.id)
 
 
 @router.get("/metrics")

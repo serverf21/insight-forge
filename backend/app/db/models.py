@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Float, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -46,3 +46,18 @@ class ExperimentRun(Base):
     ndcg10: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     recall10: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     mrr10: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+
+
+class RelevanceFeedback(Base):
+    __tablename__ = "relevance_feedback"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    request_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    doc_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    relevant: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        index=True,
+    )
