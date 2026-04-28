@@ -7,33 +7,70 @@ Run commands from the repo root. If you are inside `backend/`, prefix repo-root 
 ## Architecture
 
 ```text
-                         +-----------------------------+
-                         | React + Vite frontend       |
-                         | Search / KPIs / Eval / Logs |
-                         +--------------+--------------+
-                                        |
-                                  /api proxy
-                                        |
-                         +--------------v--------------+
-                         | FastAPI backend              |
-                         | routes.py / HybridSearcher   |
-                         +------+----------+------------+
-                                |          |
-                    +-----------v--+    +--v----------------+
-                    | BM25 index   |    | Vector index       |
-                    | rank-bm25    |    | MiniLM + FAISS IP  |
-                    +-----------+--+    +--+----------------+
-                                |          |
-                         +------v----------v------+
-                         | data/processed/docs    |
-                         | data/index/* artifacts |
-                         +------------+-----------+
-                                      |
-                         +------------v-----------+
-                         | SQLite metrics/log DB  |
-                         | experiments.csv        |
-                         +------------------------+
+┌─────────────────────────────────────────────────────────┐
+│                        up.sh                            │
+└────────────────────────┬────────────────────────────────┘
+                         │ orchestrates
+         ┌───────────────┼───────────────┐
+         ▼               ▼               ▼
+  ┌─────────────┐ ┌─────────────┐ ┌───────────────┐
+  │  app.ingest │ │  app.index  │ │   Vite :5173  │
+  │  data/raw/  │ │  BM25+FAISS │ │  React UI     │
+  └──────┬──────┘ └──────┬──────┘ └───────┬───────┘
+         │               │                │
+         ▼               ▼                │
+  data/processed/  data/index/      proxy /api/*
+  docs.jsonl       bm25/ vector/         │
+                         │                │
+                         └────────┬───────┘
+                                  ▼
+                         ┌─────────────────┐
+                         │  FastAPI :8000  │
+                         │  /search        │
+                         │  /metrics       │
+                         │  /feedback      │
+                         │  /logs          │
+                         │  /experiments   │
+                         └────────┬────────┘
+                                  │
+                         ┌────────▼────────┐
+                         │    SQLite       │
+                         │  query_logs     │
+                         │  feedback       │
+                         └─────────────────┘
 ```
+
+### SQLite schema
+
+#### `query_logs`
+
+| column | type | description |
+|---|---|---|
+| `id` | INTEGER | Auto-increment primary key. |
+| `request_id` | VARCHAR(64) | Per-request UUID for correlating events. |
+| `query` | TEXT | The raw query string submitted to `/search`. |
+| `alpha` | FLOAT | Hybrid weight used for this request (\(0\) BM25-only, \(1\) vector-only). |
+| `top_k` | INTEGER | Requested number of results. |
+| `result_count` | INTEGER | Number of results returned. |
+| `latency_ms` | FLOAT | End-to-end request latency in milliseconds. |
+| `error` | TEXT | Error message if the request failed; empty string otherwise. |
+| `created_at` | DATETIME | Row creation timestamp (UTC). |
+
+#### `relevance_feedback`
+
+| column | type | description |
+|---|---|---|
+| `id` | INTEGER | Auto-increment primary key. |
+| `request_id` | VARCHAR(64) | The `request_id` being labeled. |
+| `doc_id` | VARCHAR(64) | The document identifier being judged. |
+| `relevant` | BOOLEAN | Relevance label (`true`/`false`). |
+| `created_at` | DATETIME | Row creation timestamp (UTC). |
+
+### Known limitations
+
+- CPU-only (no GPU acceleration)
+- single-node SQLite (not suitable for concurrent write-heavy load)
+- FAISS flat index (exact search, does not scale beyond ~100k docs without switching to HNSW)
 
 ## 1-Minute Quickstart
 
